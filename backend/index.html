@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zodiac360 - Perfect Aligned Kundli Charts</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #090d16;
+      color: #f8fafc;
+      margin: 0;
+      padding: 16px;
+    }
+    h1 { text-align: center; color: #f59e0b; font-size: 1.8rem; margin-bottom: 20px; }
+    h2 { color: #f59e0b; font-size: 1.15rem; margin: 0 0 12px 0; }
+    
+    .form-container {
+      max-width: 800px;
+      margin: 0 auto 24px auto;
+      background: #1e293b;
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid #334155;
+    }
+    .grid-inputs {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    .input-group { display: flex; flex-direction: column; }
+    label { font-size: 13px; margin-bottom: 4px; color: #94a3b8; }
+    input {
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #475569;
+      background: #0f172a;
+      color: #fff;
+      font-size: 14px;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #0f172a;
+      font-weight: bold;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 14px;
+    }
+    button:hover { opacity: 0.9; }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .chart-box {
+      background: #131d31;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid #1e293b;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    .svg-wrapper {
+      width: 100%;
+      max-width: 340px;
+      aspect-ratio: 1 / 1;
+    }
+    svg {
+      width: 100%;
+      height: 100%;
+      background: #0a0f1d;
+      border-radius: 8px;
+    }
+    .chart-line { stroke: #e2a03f; stroke-width: 2; fill: none; }
+    
+    /* Typography inside Chart */
+    .rashi-tag {
+      fill: #f87171;
+      font-size: 13px;
+      font-weight: bold;
+      font-family: inherit;
+    }
+    .planet-tag {
+      fill: #38bdf8;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+    }
+    .south-rashi-name {
+      fill: #64748b;
+      font-size: 10px;
+      font-weight: 500;
+    }
+    
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid #24324d; text-align: left; }
+    th { background: #1e293b; color: #f59e0b; }
+    .loading { text-align: center; color: #38bdf8; font-size: 16px; display: none; margin: 20px; }
+  </style>
+</head>
+<body>
+
+  <h1>🌌 Zodiac360 - कुण्डली दर्शन</h1>
+
+  <div class="form-container">
+    <div class="grid-inputs">
+      <div class="input-group">
+        <label>Birth Date (UTC):</label>
+        <input type="text" id="birthDate" value="1999-06-05T01:00:00.000Z">
+      </div>
+      <div class="input-group">
+        <label>Latitude:</label>
+        <input type="number" step="any" id="latitude" value="28.0229">
+      </div>
+      <div class="input-group">
+        <label>Longitude:</label>
+        <input type="number" step="any" id="longitude" value="73.3119">
+      </div>
+    </div>
+    <button onclick="fetchKundliData()">चार्ट्स लोड करें (Generate 3 Charts)</button>
+  </div>
+
+  <div id="loading" class="loading">गणना जारी है...</div>
+
+  <div class="charts-grid" id="resultsSection" style="display: none;">
+    
+    <!-- 1. North Indian D1 Chart -->
+    <div class="chart-box">
+      <h2>1. लग्न कुण्डली (North Indian D1)</h2>
+      <div class="svg-wrapper">
+        <svg viewBox="0 0 300 300">
+          <rect x="2" y="2" width="296" height="296" class="chart-line" />
+          <line x1="2" y1="2" x2="298" y2="298" class="chart-line" />
+          <line x1="298" y1="2" x2="2" y2="298" class="chart-line" />
+          <polygon points="150,2 2,150 150,298 298,150" class="chart-line" />
+          <g id="northChartContent"></g>
+        </svg>
+      </div>
+    </div>
+
+    <!-- 2. South Indian D1 Chart -->
+    <div class="chart-box">
+      <h2>2. दक्षिण भारतीय चार्ट (South Indian D1)</h2>
+      <div class="svg-wrapper">
+        <svg viewBox="0 0 300 300">
+          <rect x="2" y="2" width="296" height="296" class="chart-line" />
+          <line x1="75" y1="2" x2="75" y2="298" class="chart-line" />
+          <line x1="225" y1="2" x2="225" y2="298" class="chart-line" />
+          <line x1="2" y1="75" x2="298" y2="75" class="chart-line" />
+          <line x1="2" y1="225" x2="298" y2="225" class="chart-line" />
+          <line x1="150" y1="2" x2="150" y2="75" class="chart-line" />
+          <line x1="150" y1="225" x2="150" y2="298" class="chart-line" />
+          <line x1="2" y1="150" x2="75" y2="150" class="chart-line" />
+          <line x1="225" y1="150" x2="298" y2="150" class="chart-line" />
+          <rect x="75" y="75" width="150" height="150" fill="#0f172a" />
+          <text x="150" y="155" text-anchor="middle" fill="#475569" font-size="13" font-weight="bold">D1 SOUTH</text>
+          <g id="southChartContent"></g>
+        </svg>
+      </div>
+    </div>
+
+    <!-- 3. Navamsha D9 Chart -->
+    <div class="chart-box">
+      <h2>3. नवांश कुण्डली (Navamsha D9)</h2>
+      <div class="svg-wrapper">
+        <svg viewBox="0 0 300 300">
+          <rect x="2" y="2" width="296" height="296" class="chart-line" />
+          <line x1="2" y1="2" x2="298" y2="298" class="chart-line" />
+          <line x1="298" y1="2" x2="2" y2="298" class="chart-line" />
+          <polygon points="150,2 2,150 150,298 298,150" class="chart-line" />
+          <g id="d9ChartContent"></g>
+        </svg>
+      </div>
+    </div>
+
+    <!-- 4. Planet Table -->
+    <div class="chart-box" style="grid-column: 1 / -1;">
+      <h2>4. ग्रह स्पष्ट सारणी (Planetary Degrees)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ग्रह</th>
+            <th>राशि</th>
+            <th>अंश (Degree)</th>
+            <th>भाव (D1 House)</th>
+            <th>नवांश राशि (D9)</th>
+          </tr>
+        </thead>
+        <tbody id="planetTableBody"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <script>
+    // 100% सटीक ज्यामितीय केंद्र बिंदु (Geometric Centroids of North Indian Chart)
+    const NORTH_SLOTS = {
+      1:  { r: [150, 115], p: [150, 65] },
+      2:  { r: [95, 45],   p: [65, 35] },
+      3:  { r: [45, 95],   p: [35, 65] },
+      4:  { r: [115, 150], p: [65, 150] },
+      5:  { r: [45, 205],  p: [35, 235] },
+      6:  { r: [95, 255],  p: [65, 265] },
+      7:  { r: [150, 185], p: [150, 235] },
+      8:  { r: [205, 255], p: [235, 265] },
+      9:  { r: [255, 205], p: [265, 235] },
+      10: { r: [185, 150], p: [235, 150] },
+      11: { r: [255, 95],  p: [265, 65] },
+      12: { r: [205, 45],  p: [235, 35] }
+    };
+
+    // दक्षिण भारतीय चार्ट में 12 खानों के निश्चित केंद्र बिंदु
+    const SOUTH_SLOTS = {
+      11: { cx: 37,  cy: 37,  name: "मीन" },
+      0:  { cx: 112, cy: 37,  name: "मेष" },
+      1:  { cx: 187, cy: 37,  name: "वृष" },
+      2:  { cx: 262, cy: 37,  name: "मिथु" },
+      3:  { cx: 262, cy: 112, name: "कर्क" },
+      4:  { cx: 262, cy: 187, name: "सिंह" },
+      5:  { cx: 262, cy: 262, name: "कन्या" },
+      6:  { cx: 187, cy: 262, name: "तुला" },
+      7:  { cx: 112, cy: 262, name: "वृश्चि" },
+      8:  { cx: 37,  cy: 262, name: "धनु" },
+      9:  { cx: 37,  cy: 187, name: "मकर" },
+      10: { cx: 37,  cy: 112, name: "कुम्भ" }
+    };
+
+    const RASHI_NAMES = ["मेष", "वृषभ", "मिथुन", "कर्क", "सिंह", "कन्या", "तुला", "वृश्चिक", "धनु", "मकर", "कुम्भ", "मीन"];
+
+    function calculateNavamshaSign(totalDeg) {
+      return Math.floor(totalDeg / (30 / 9)) % 12;
+    }
+
+    async function fetchKundliData() {
+      const birthDate = document.getElementById('birthDate').value;
+      const latitude = parseFloat(document.getElementById('latitude').value);
+      const longitude = parseFloat(document.getElementById('longitude').value);
+
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('resultsSection').style.display = 'none';
+
+      try {
+        const response = await fetch('http://localhost:5000/api/v1/astro/planets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ birthDate, latitude, longitude })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+          renderAllCharts(result.data);
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('resultsSection').style.display = 'grid';
+        } else {
+          alert('Error: ' + (result.error || result.message));
+          document.getElementById('loading').style.display = 'none';
+        }
+      } catch (err) {
+        alert('Server Error: ' + err.message);
+        document.getElementById('loading').style.display = 'none';
+      }
+    }
+
+    // नॉर्थ इंडियन चार्ट के अंदर ग्रह रेंडर करने का हेल्पर (Multi-line support)
+    function generateNorthSvgContent(lagnaRashiIdx, housePlanets) {
+      let html = '';
+      for (let h = 1; h <= 12; h++) {
+        const rashiNum = ((lagnaRashiIdx + (h - 1)) % 12) + 1;
+        const slot = NORTH_SLOTS[h];
+
+        // राशि संख्या
+        html += `<text x="${slot.r[0]}" y="${slot.r[1]}" text-anchor="middle" dominant-baseline="central" class="rashi-tag">${rashiNum}</text>`;
+
+        // ग्रहों के नाम
+        const planets = housePlanets[h] || [];
+        if (planets.length > 0) {
+          if (planets.length <= 2) {
+            html += `<text x="${slot.p[0]}" y="${slot.p[1]}" text-anchor="middle" dominant-baseline="central" class="planet-tag">${planets.join(' ')}</text>`;
+          } else {
+            // यदि 2 से अधिक ग्रह हों तो दो पंक्तियों में तोड़ें
+            const row1 = planets.slice(0, 2).join(' ');
+            const row2 = planets.slice(2).join(' ');
+            html += `<text x="${slot.p[0]}" y="${slot.p[1] - 7}" text-anchor="middle" dominant-baseline="central" class="planet-tag">${row1}</text>`;
+            html += `<text x="${slot.p[0]}" y="${slot.p[1] + 7}" text-anchor="middle" dominant-baseline="central" class="planet-tag">${row2}</text>`;
+          }
+        }
+      }
+      return html;
+    }
+
+    function renderAllCharts(data) {
+      const { ascendant, planets } = data;
+      const d1LagnaIdx = ascendant.rashiIndex;
+
+      const d1Houses = { 1:[], 2:[], 3:[], 4:[], 5:[], 6:[], 7:[], 8:[], 9:[], 10:[], 11:[], 12:[] };
+      const southRashiPlanets = { 0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[], 7:[], 8:[], 9:[], 10:[], 11:[] };
+
+      const d9LagnaIdx = calculateNavamshaSign(ascendant.totalDegree);
+      const d9Houses = { 1:[], 2:[], 3:[], 4:[], 5:[], 6:[], 7:[], 8:[], 9:[], 10:[], 11:[], 12:[] };
+
+      const short = { Sun: "Su", Moon: "Mo", Mars: "Ma", Mercury: "Me", Jupiter: "Ju", Venus: "Ve", Saturn: "Sa", Rahu: "Ra", Ketu: "Ke" };
+
+      // South Chart में लग्न मार्क करें
+      southRashiPlanets[d1LagnaIdx].push("ASC");
+
+      Object.values(planets).forEach(p => {
+        const tag = short[p.name] || p.name;
+        if (p.house) d1Houses[p.house].push(tag);
+
+        const rIdx = Math.floor(p.totalDegree / 30) % 12;
+        southRashiPlanets[rIdx].push(tag);
+
+        // D9 House
+        const pD9Rashi = calculateNavamshaSign(p.totalDegree);
+        const pD9House = ((pD9Rashi - d9LagnaIdx + 12) % 12) + 1;
+        d9Houses[pD9House].push(tag);
+      });
+
+      // 1. Render North D1 Chart
+      document.getElementById('northChartContent').innerHTML = generateNorthSvgContent(d1LagnaIdx, d1Houses);
+
+      // 2. Render South D1 Chart
+      let southHtml = '';
+      for (let r = 0; r < 12; r++) {
+        const slot = SOUTH_SLOTS[r];
+        const plist = southRashiPlanets[r] || [];
+        southHtml += `<text x="${slot.cx}" y="${slot.cy - 16}" text-anchor="middle" class="south-rashi-name">${slot.name}</text>`;
+        
+        if (plist.length > 0) {
+          if (plist.length <= 2) {
+            southHtml += `<text x="${slot.cx}" y="${slot.cy + 4}" text-anchor="middle" class="planet-tag">${plist.join(' ')}</text>`;
+          } else {
+            southHtml += `<text x="${slot.cx}" y="${slot.cy - 1}" text-anchor="middle" class="planet-tag">${plist.slice(0,2).join(' ')}</text>`;
+            southHtml += `<text x="${slot.cx}" y="${slot.cy + 13}" text-anchor="middle" class="planet-tag">${plist.slice(2).join(' ')}</text>`;
+          }
+        }
+      }
+      document.getElementById('southChartContent').innerHTML = southHtml;
+
+      // 3. Render North D9 (Navamsha) Chart
+      document.getElementById('d9ChartContent').innerHTML = generateNorthSvgContent(d9LagnaIdx, d9Houses);
+
+      // 4. Render Table
+      let tableHtml = `
+        <tr>
+          <td><strong>Lagna</strong></td>
+          <td>${ascendant.rashi} (${ascendant.rashiHindi})</td>
+          <td>${ascendant.degreeInRashi}°</td>
+          <td>1st House</td>
+          <td>${RASHI_NAMES[d9LagnaIdx]}</td>
+        </tr>
+      `;
+      Object.values(planets).forEach(p => {
+        const d9R = calculateNavamshaSign(p.totalDegree);
+        tableHtml += `
+          <tr>
+            <td>${p.name}</td>
+            <td>${p.rashi} (${p.rashiHindi})</td>
+            <td>${p.degreeInRashi}°</td>
+            <td>House ${p.house}</td>
+            <td>${RASHI_NAMES[d9R]}</td>
+          </tr>
+        `;
+      });
+      document.getElementById('planetTableBody').innerHTML = tableHtml;
+    }
+  </script>
+</body>
+</html>
