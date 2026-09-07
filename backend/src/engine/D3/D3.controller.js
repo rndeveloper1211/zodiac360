@@ -31,9 +31,9 @@ function getD3(req, res) {
     const rawData = rawReport.data ? (rawReport.data.raw || rawReport.data) : rawReport;
     const d3AnalysisReport = processD3Chart(rawData);
 
-    console.log('\n================== [2. GENERATED D3 ANALYSIS REPORT] ==================');
-    console.log(JSON.stringify(d3AnalysisReport, null, 2));
-    console.log('=======================================================================\n');
+    // console.log('\n================== [2. GENERATED D3 ANALYSIS REPORT] ==================');
+    // console.log(JSON.stringify(d3AnalysisReport, null, 2));
+    // console.log('=======================================================================\n');
 
     return res.status(200).json({
       success: true,

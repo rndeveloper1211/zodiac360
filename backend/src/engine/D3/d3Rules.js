@@ -3,7 +3,7 @@
  * Parashari System
  */
 
-const SIGNS = [
+const SIGNS = Object.freeze([
   { id: 1, name: "Aries", hindi: "मेष", element: "Fire", lord: "Mars", gender: "Male" },
   { id: 2, name: "Taurus", hindi: "वृषभ", element: "Earth", lord: "Venus", gender: "Female" },
   { id: 3, name: "Gemini", hindi: "मिथुन", element: "Air", lord: "Mercury", gender: "Male" },
@@ -16,36 +16,31 @@ const SIGNS = [
   { id: 10, name: "Capricorn", hindi: "मकर", element: "Earth", lord: "Saturn", gender: "Female" },
   { id: 11, name: "Aquarius", hindi: "कुंभ", element: "Air", lord: "Saturn", gender: "Male" },
   { id: 12, name: "Pisces", hindi: "मीन", element: "Water", lord: "Jupiter", gender: "Female" }
-];
+]);
 
-// Direct Sign Lord Quick Lookup
-const SIGN_LORDS = {
+const SIGN_LORDS = Object.freeze({
   1: "Mars", 2: "Venus", 3: "Mercury", 4: "Moon",
   5: "Sun", 6: "Mercury", 7: "Venus", 8: "Mars",
   9: "Jupiter", 10: "Saturn", 11: "Saturn", 12: "Jupiter"
-};
+});
 
-// Gender Categorization of Signs
-const FEMALE_SIGNS = [2, 4, 6, 8, 10, 12]; // वृषभ, कर्क, कन्या, वृश्चिक, मकर, मीन
-const MALE_SIGNS = [1, 3, 5, 7, 9, 11];    // मेष, मिथुन, सिंह, तुला, धनु, कुंभ
+const FEMALE_SIGNS = Object.freeze([2, 4, 6, 8, 10, 12]);
+const MALE_SIGNS = Object.freeze([1, 3, 5, 7, 9, 11]);
 
-// Drekkana Part Ranges (10 degrees each)
-const DREKKANA_PARTS = {
-  FIRST: { part: 1, minDeg: 0, maxDeg: 10, offset: 0 },   // Same sign (1st from self)
-  SECOND: { part: 2, minDeg: 10, maxDeg: 20, offset: 4 }, // 5th sign from self
-  THIRD: { part: 3, minDeg: 20, maxDeg: 30, offset: 8 }   // 9th sign from self
-};
+const DREKKANA_PARTS = Object.freeze({
+  FIRST: { part: 1, minDeg: 0, maxDeg: 10, offset: 0 },
+  SECOND: { part: 2, minDeg: 10, maxDeg: 20, offset: 4 },
+  THIRD: { part: 3, minDeg: 20, maxDeg: 30, offset: 8 }
+});
 
-// D3 Specific Significators (Karaka)
-const D3_KARAKAS = {
-  SIBLINGS: "Mars",           // सहज कारक (पराक्रम व भाई-बहन)
-  ELDER_SIBLING: "Jupiter",   // बड़े भाई-बहन का कारक
-  YOUNGER_SIBLING: "Mars",    // छोटे भाई-बहन का कारक
-  COURAGE_DRIVE: "Mars"       // आंतरिक साहस व जुझारूपन
-};
+const D3_KARAKAS = Object.freeze({
+  SIBLINGS: "Mars",
+  ELDER_SIBLING: "Jupiter",
+  YOUNGER_SIBLING: "Mars",
+  COURAGE_DRIVE: "Mars"
+});
 
-// House Significance in D3
-const D3_HOUSE_SIGNIFICANCE = {
+const D3_HOUSE_SIGNIFICANCE = Object.freeze({
   1: "व्यक्ति का स्वभाव, शारीरिक ऊर्जा, साहस और व्यक्तिगत प्रयास",
   2: "पारिवारिक संसाधन, वाणी और संयुक्त पारिवारिक मूल्य",
   3: "छोटे भाई-बहन, पहल करने की क्षमता, पराक्रम और शौर्य",
@@ -58,7 +53,7 @@ const D3_HOUSE_SIGNIFICANCE = {
   10: "कर्म, सामाजिक पहचान और प्रयास की दिशा",
   11: "बड़े भाई-बहन, मित्रों का सहयोग, लाभ और आकांक्षाएं",
   12: "त्याग, दूरी, विदेश और अज्ञात व्यय"
-};
+});
 
 module.exports = {
   SIGNS,

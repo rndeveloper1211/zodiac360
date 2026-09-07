@@ -1,8 +1,8 @@
 // E:/zodiac360/backend/src/engine/D1/D1.controller.js
 
 const { generateD1Report } = require('./D1.service');
-const { analyzeD1Chart } = require('./d1Engine');
-
+//const { analyzeD1Chart } = require('./d1Engine');
+const { interpretD1Chart } = require('../D1/d1Interpreter');
 function getD1(req, res) {
   try {
     const params = Object.keys(req.query).length > 0 ? req.query : req.body;
@@ -31,7 +31,7 @@ function getD1(req, res) {
     console.log(JSON.stringify(rawReport, null, 2));
 
     // 2. व्याख्या इंजन (6-Layer Interpretation)
-    const analysisReport = analyzeD1Chart(rawReport);
+    const analysisReport = interpretD1Chart(rawReport);
 
     // ==========================================
     // 🎯 STEP 2: जनरेट हुआ पूरा आउटपुट यहाँ प्रिंट होगा
@@ -63,7 +63,7 @@ function analyzeExistingD1(req, res) {
     console.log('\n================== [INCOMING RAW D1 PAYLOAD] ==================');
     console.log(JSON.stringify(payload, null, 2));
 
-    const interpretation = analyzeD1Chart(payload);
+    const interpretation = interpretD1Chart(payload);
 
     console.log('\n================== [PROCESSED OUTPUT REPORT] ==================');
     console.log(JSON.stringify(interpretation, null, 2));

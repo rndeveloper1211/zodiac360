@@ -1,6 +1,5 @@
 /**
  * D3 (Drekkana) Chart Interpreter
- * Generates accurate predictions for Siblings, Courage, and Energy Drive
  */
 
 const {
@@ -9,10 +8,7 @@ const {
   SIGN_LORDS,
   FEMALE_SIGNS
 } = require('./d3Rules');
-
-/**
- * Interpret Lagna of D3
- */
+const { DREKKANA_DEITIES, getDrekkanaClassification, calculate22ndDrekkana } = require('./d3AdvancedRules');
 function interpretD3Lagna(lagnaData) {
   const { d3SignName, d3SignHindi, lord } = lagnaData;
 
@@ -38,9 +34,6 @@ function interpretD3Lagna(lagnaData) {
   };
 }
 
-/**
- * Detailed Siblings Analysis (3rd House + 11th House + Karakas + Gender Nature)
- */
 function analyzeSiblingsPrecision(d3Data) {
   const { lagna, houseOccupancy = {}, planetCalculations = {} } = d3Data;
   const lagnaSignId = lagna.d3SignId;
@@ -59,14 +52,10 @@ function analyzeSiblingsPrecision(d3Data) {
   const primaryYoungerGender = isThirdFemaleSign ? "Female (Sister)" : "Male (Brother)";
 
   let youngerSiblingsReport = "";
-
   if (thirdOccupants.length > 0) {
-    youngerSiblingsReport = `तृतीय भाव में ${thirdOccupants.join(", ")} की उपस्थिति छोटे भाई-बहनों के साथ सक्रिय संबंध दर्शाती है। ` +
-      `तृतीय भाव ${isThirdFemaleSign ? "स्त्री राशि" : "पुरुष राशि"} के प्रभाव में होने से मुख्य संकेत ${isThirdFemaleSign ? "छोटी बहन" : "छोटे भाई"} का बनता है।`;
+    youngerSiblingsReport = `तृतीय भाव में ${thirdOccupants.join(", ")} की स्थिति छोटे भाई-बहनों से सक्रिय संबंध दर्शाती है। भाव पर ${isThirdFemaleSign ? "स्त्री राशि" : "पुरुष राशि"} का प्रभाव होने से ${isThirdFemaleSign ? "छोटी बहन" : "छोटे भाई"} का प्रबल संकेत है।`;
   } else {
-    youngerSiblingsReport = `तृतीय भाव रिक्त है परंतु तृतीयेश (${thirdLord}) ${lordHouse ? `${lordHouse}वें भाव (${lordSign})` : "शुभ स्थान"} में स्थित है। ` +
-      `तृतीय भाव ${isThirdFemaleSign ? "स्त्री राशि" : "पुरुष राशि"} के प्रभाव में होने के कारण ${isThirdFemaleSign ? "छोटी बहन" : "छोटे भाई"} का प्रबल योग बनता है। ` +
-      `कारक मंगल की ${marsHouse ? `${marsHouse}वें भाव में ` : ""}स्थिति भाई-बहन के साथ जीवन भर संबंध और भावनात्मक सहयोग को बनाए रखती है।`;
+    youngerSiblingsReport = `तृतीय भाव रिक्त है। भावेश ${thirdLord} का स्थान ${lordHouse ? `${lordHouse}वें भाव (${lordSign})` : "शुभ स्थान"} में है। कारक मंगल ${marsHouse ? `${marsHouse}वें भाव में ` : ""}स्थित होकर भाई-बहनों से जुड़े अनुभवों और पराक्रम को प्रभावित करता है।`;
   }
 
   // 2. Elder Siblings (11th House)
@@ -78,9 +67,9 @@ function analyzeSiblingsPrecision(d3Data) {
 
   let elderSiblingsReport = "";
   if (eleventhOccupants.length > 0) {
-    elderSiblingsReport = `ग्यारहवें भाव में ${eleventhOccupants.join(", ")} की उपस्थिति बड़े भाई-बहनों के साथ-साथ आपके सामाजिक नेटवर्क, मित्रों और वरिष्ठ लोगों से विशेष लाभ, समर्थन और मार्गदर्शन दिलाती है।`;
+    elderSiblingsReport = `एकादश भाव में ${eleventhOccupants.join(", ")} की उपस्थिति बड़े भाई-बहनों और सामाजिक नेटवर्क से सहयोग तथा लाभ की स्थिति बनाती है।`;
   } else {
-    elderSiblingsReport = `ग्यारहवां भाव रिक्त है; वरिष्ठ संबंधों और लाभ का परिणाम एकादशेश (${eleventhLord}) के आधार पर निर्धारित होगा।`;
+    elderSiblingsReport = `एकादश भाव रिक्त है; बड़े भाई-बहनों का फल एकादशेश (${eleventhLord}) तथा कारक गुरु की स्थिति पर निर्भर रहेगा।`;
   }
 
   return {
@@ -100,10 +89,7 @@ function analyzeSiblingsPrecision(d3Data) {
   };
 }
 
-/**
- * Interpret Planets placed in D3 Houses
- */
-function interpretPlanetInD3House(planet, house, signName) {
+function interpretPlanetInD3House(planet, house, isCombust = false) {
   const planetEffects = {
     Sun: {
       1: "मजबूत आत्मविश्वास, स्वतंत्र कार्यशैली और उच्च स्वाभिमान।",
@@ -153,29 +139,44 @@ function interpretPlanetInD3House(planet, house, signName) {
     }
   };
 
-  const planetText = (planetEffects[planet] && (planetEffects[planet][house] || planetEffects[planet].default)) || "सामान्य परिणाम।";
-  const houseText = D3_HOUSE_SIGNIFICANCE[house] || "";
+  let effectText = (planetEffects[planet] && (planetEffects[planet][house] || planetEffects[planet].default)) || "सामान्य परिणाम।";
+  if (isCombust) {
+    effectText += " (ग्रह अस्त होने के कारण इसके नैसर्गिक प्रभाव में न्यूनता आ सकती है)";
+  }
 
   return {
-    houseImpact: houseText,
-    effect: planetText
+    houseImpact: D3_HOUSE_SIGNIFICANCE[house] || "",
+    effect: effectText
   };
 }
+function getAdvancedInsights(d3Data, d1Data) {
+  const lagna = d3Data.lagna;
+  const classification = getDrekkanaClassification(lagna.d3SignId, lagna.drekkanaPart);
+  const deityInfo = DREKKANA_DEITIES[lagna.drekkanaPart];
+  
+  let khareshInfo = null;
+  if (d1Data && d1Data.lagna) {
+    khareshInfo = calculate22ndDrekkana(d1Data.lagna.signId, d1Data.lagna.degreeInSign);
+  }
 
-/**
- * Detailed Sibling & Courage Synthesis
- */
-function synthesizeD3Analysis(d3Data) {
+  return {
+    drekkanaType: classification,
+    rulingDeity: deityInfo,
+    khareshAnalysis: khareshInfo
+  };
+}
+function synthesizeD3Analysis(d3Data, d1Data) {
   const { planetCalculations = {}, lagna } = d3Data;
 
   return {
     lagnaAnalysis: interpretD3Lagna(lagna),
     siblingsSummary: analyzeSiblingsPrecision(d3Data),
+    advancedInsights: getAdvancedInsights(d3Data, d1Data), // <-- यहाँ जोड़ना है
     detailedPlanetaryEffects: Object.keys(planetCalculations).reduce((acc, pName) => {
       const p = planetCalculations[pName];
       acc[pName] = {
         ...p,
-        interpretation: interpretPlanetInD3House(pName, p.house, p.d3SignName)
+        interpretation: interpretPlanetInD3House(pName, p.house, p.isCombust)
       };
       return acc;
     }, {})
@@ -185,5 +186,6 @@ function synthesizeD3Analysis(d3Data) {
 module.exports = {
   interpretD3Lagna,
   interpretPlanetInD3House,
-  synthesizeD3Analysis
+  synthesizeD3Analysis,
+  getAdvancedInsights
 };

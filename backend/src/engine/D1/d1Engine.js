@@ -1,215 +1,336 @@
-// E:/zodiac360/backend/src/engine/D1/d1Engine.js
+/**
+ * ============================================================
+ * D1 PROGENY DATA EXTRACTOR
+ * ============================================================
+ *
+ * Purpose:
+ * D1 से केवल संतान / progeny analysis के लिए जरूरी
+ * calculated data निकालना।
+ *
+ * यह function नया ग्रह calculation नहीं करता।
+ * Existing D1 calculation को ही reuse करता है।
+ *
+ * Required:
+ * - 5th house
+ * - 5th lord
+ * - 5th lord placement
+ * - Jupiter / Putra Karaka
+ * - 2nd house
+ * - 7th house
+ * - 9th house
+ * - 11th house
+ * - 5th house occupants
+ * - 5th house aspects
+ */
 
-const { 
-  SIGN_DATA, 
-  PLANET_DATA, 
-  HOUSE_THEMES, 
-  PLANET_IN_LAGNA, 
-  PLANET_DIGNITY_MEANINGS,
-  CAREER_PLANET_ROLES,
-  CAREER_IN_10TH,
-  CAREER_COMBINATIONS,
-  SPECIAL_ASPECTS 
-} = require('./d1Rules');
-
-// करियर और जॉब सेक्टर का सटीक विश्लेषण करने वाला हेल्पर फंक्शन
-function generateCareerAnalysis(d1Data, lagnaId, houseAspects) {
-  // 10वें भाव (करियर) की राशि और उसके स्वामी की गणना
-  const tenthHouseSignId = ((lagnaId - 1 + 9) % 12) + 1;
-  const tenthLord = SIGN_DATA[tenthHouseSignId].ruler;
-  const tenthLordHouse = d1Data.grahas[tenthLord].house;
-  
-  const tenthOccupants = d1Data.analysis.houseOccupancy["10"] || [];
-  const tenthAspects = houseAspects[10] || [];
-  const sixthOccupants = d1Data.analysis.houseOccupancy["6"] || [];
-  const secondOccupants = d1Data.analysis.houseOccupancy["2"] || [];
-
-  let primarySectors = [];
-  let suitableRoles = [];
-  let detailedInsights = [];
-
-  // 1. 10वें भाव में उपस्थित ग्रहों के आधार पर
-  if (tenthOccupants.length > 0) {
-    tenthOccupants.forEach(planet => {
-      if (CAREER_IN_10TH[planet]) {
-        detailedInsights.push(`दशम भाव में ${PLANET_DATA[planet].hindi} (${planet}): ${CAREER_IN_10TH[planet]}`);
-      }
-      if (CAREER_PLANET_ROLES[planet]) {
-        primarySectors.push(CAREER_PLANET_ROLES[planet].sector);
-        suitableRoles.push(CAREER_PLANET_ROLES[planet].roles);
-      }
-    });
-  } else {
-    // यदि 10वां भाव खाली है, तो दशमेश (10th Lord) के आधार पर
-    if (CAREER_PLANET_ROLES[tenthLord]) {
-      detailedInsights.push(
-        `दशमेश ${PLANET_DATA[tenthLord].hindi} (${tenthLord}) ${tenthLordHouse}वें भाव में स्थित हैं, जो मुख्य रूप से ${CAREER_PLANET_ROLES[tenthLord].sector} के अनुकूल है।`
-      );
-      primarySectors.push(CAREER_PLANET_ROLES[tenthLord].sector);
-      suitableRoles.push(CAREER_PLANET_ROLES[tenthLord].roles);
-    }
-  }
-
-  // 2. विशिष्ट ग्रह युतियों (Combinations) की जाँच
-  const allCombinations = [
-    { key: "Sun_Mercury", check: secondOccupants.includes("Sun") && secondOccupants.includes("Mercury") },
-    { key: "Mercury_Rahu", check: (tenthOccupants.includes("Rahu") && tenthLord === "Mercury") || (tenthOccupants.includes("Mercury") && tenthOccupants.includes("Rahu")) },
-    { key: "Sun_Mars", check: tenthOccupants.includes("Mars") && tenthLord === "Sun" },
-    { key: "Sun_Jupiter", check: tenthOccupants.includes("Jupiter") && tenthLord === "Sun" },
-    { key: "Mars_Saturn", check: sixthOccupants.includes("Saturn") && tenthAspects.includes("Mars") },
-    { key: "Jupiter_Moon", check: d1Data.analysis.yogasAndDoshas?.some(y => y.name === "Gajakesari Yoga") }
-  ];
-
-  allCombinations.forEach(combo => {
-    if (combo.check && CAREER_COMBINATIONS[combo.key]) {
-      detailedInsights.push(`सक्रिय योग प्रभाव (${combo.key}): ${CAREER_COMBINATIONS[combo.key]}`);
-    }
-  });
-
-  // 3. 6वें भाव (सर्विस/नौकरी) का विश्लेषण
-  let workEnvironment = "सामान्य कार्यक्षेत्र व नियमित सेवा।";
-  if (sixthOccupants.length > 0) {
-    const sixthDesc = sixthOccupants.map(p => `${PLANET_DATA[p].hindi} (${PLANET_DATA[p].easyMeaning})`).join(", ");
-    workEnvironment = `षष्ठ भाव में ग्रहों की स्थिति (${sixthDesc}) दर्शाती है कि कार्यक्षेत्र में प्रतियोगिता और अनुशासन से बड़ी सफलता मिलेगी।`;
-  }
-
-  return {
-    primarySectors: [...new Set(primarySectors)],
-    suitableJobRoles: suitableRoles.join(" | "),
-    workEnvironment: workEnvironment,
-    detailedCareerInsights: detailedInsights
-  };
-}
-
-function analyzeD1Chart(payload) {
-  const d1Data = payload.data ? payload.data : payload;
-
-  const lagna = d1Data.lagna;
-  const lagnaId = lagna.signId;
-  const lagnaMeta = SIGN_DATA[lagnaId];
-  const lagnaLord = lagnaMeta.ruler;
-  const lagnaLordData = d1Data.grahas[lagnaLord];
-  const lagnaLordHouse = lagnaLordData.house;
-
-  // 1. सभी 12 भावों पर दृष्टियों (Aspects) की गणना
-  const houseAspects = {};
-  for (let i = 1; i <= 12; i++) houseAspects[i] = [];
-
-  for (const [planet, pData] of Object.entries(d1Data.grahas)) {
-    const fromHouse = pData.house;
-    const offsets = SPECIAL_ASPECTS[planet] || [7];
-    offsets.forEach(offset => {
-      let target = ((fromHouse - 1 + offset - 1) % 12) + 1;
-      houseAspects[target].push(planet);
-    });
-  }
-
-  // 2. 12 भावों का लेयर-वाइज़ और व्याख्यात्मक विश्लेषण
-  const houseAnalysis = {};
-  for (let h = 1; h <= 12; h++) {
-    const signId = ((lagnaId - 1 + (h - 1)) % 12) + 1;
-    const signInfo = SIGN_DATA[signId];
-    const lord = signInfo.ruler;
-    const lordPlacement = d1Data.grahas[lord].house;
-    const occupants = d1Data.analysis.houseOccupancy[h.toString()] || [];
-    const aspects = houseAspects[h] || [];
-
-    let details = [];
-
-    // भावेश की स्थिति व प्रभाव
-    details.push(
-      `इस भाव के स्वामी ${PLANET_DATA[lord].hindi} (${lord}) ${lordPlacement}वें भाव में स्थित हैं, जो दर्शाता है कि ${HOUSE_THEMES[lordPlacement].impact}`
-    );
-
-    // भाव का सीधा अर्थ
-    if (HOUSE_THEMES[h].easyMeaning) {
-      details.push(`सरल शब्दों में: ${HOUSE_THEMES[h].easyMeaning}`);
-    }
-
-    // सीधे उपस्थित ग्रह (Occupants)
-    if (occupants.length > 0) {
-      const occupantDesc = occupants.map(p => {
-        const dignity = d1Data.analysis.planetaryDignities?.[p]?.dignity || "Neutral";
-        const isRetro = d1Data.grahas[p]?.isRetrograde;
-        const retroText = isRetro ? " (वक्री)" : "";
-        
-        let dignityNote = "";
-        if (PLANET_DIGNITY_MEANINGS && PLANET_DIGNITY_MEANINGS[dignity]) {
-          dignityNote = ` [${PLANET_DIGNITY_MEANINGS[dignity]}]`;
-        }
-
-        return `${PLANET_DATA[p].hindi} [${p}] (${dignity}${retroText} - ${PLANET_DATA[p].trait})${dignityNote}`;
-      }).join(", ");
-
-      details.push(`इस भाव में सीधे उपस्थित ग्रह: ${occupantDesc}।`);
-    } else {
-      details.push("इस भाव में कोई प्रत्यक्ष ग्रह नहीं है, अतः इसका फल भावेश की स्थिति और दृष्टियों पर आधारित रहेगा।");
-    }
-
-    // दृष्टियों का प्रभाव
-    if (aspects.length > 0) {
-      const aspectDesc = aspects.map(p => `${PLANET_DATA[p].hindi} (${PLANET_DATA[p].trait})`).join(", ");
-      details.push(`इस भाव पर दृष्टि प्रभाव: ${aspectDesc} की दृष्टि इस भाव के फलों को सक्रिय करती है।`);
-    }
-
-    houseAnalysis[`house_${h}`] = {
-      title: HOUSE_THEMES[h].title,
-      domain: HOUSE_THEMES[h].domain,
-      rulingSign: `${signInfo.name} (${signInfo.hindi})`,
-      signLord: `${lord} (Placed in House ${lordPlacement})`,
-      occupants: occupants,
-      aspectingPlanets: aspects,
-      synthesis: details.join(" ")
+function extractD1ProgenyData(d1RawData) {
+  if (!d1RawData?.lagna || !d1RawData?.grahas) {
+    return {
+      available: false,
+      reason: 'Valid D1 lagna and grahas are required.'
     };
   }
 
-  // 3. कोर पर्सनालिटी व बॉडी समरी (लग्न में बैठे ग्रह का सटीक विवरण)
-  const lagnaOccupants = d1Data.analysis.houseOccupancy["1"] || [];
-  let bodySummary = `${lagnaMeta.hindi} लग्न (${lagnaMeta.element} तत्व) के आधार पर: ${lagnaMeta.body}`;
+  const lagnaSignId = Number(d1RawData.lagna.signId);
 
-  if (lagnaOccupants.length > 0) {
-    const occupantTraits = lagnaOccupants.map(p => {
-      if (PLANET_IN_LAGNA && PLANET_IN_LAGNA[p]) {
-        return PLANET_IN_LAGNA[p];
-      }
-      return `लग्न में ${PLANET_DATA[p].hindi} की स्थिति व्यक्तित्व पर विशेष प्रभाव डालती है।`;
-    }).join(" ");
-
-    bodySummary += ` ${occupantTraits}`;
+  if (!lagnaSignId) {
+    return {
+      available: false,
+      reason: 'D1 Lagna signId is missing.'
+    };
   }
 
-  let personalitySummary = `मूल मानसिक प्रकृति: ${lagnaMeta.personality} ${lagnaMeta.easyMeaning ? `(${lagnaMeta.easyMeaning}) ` : ""}लग्नेश (${PLANET_DATA[lagnaLord].hindi}) के ${lagnaLordHouse}वें भाव में होने से व्यक्ति की जीवन प्राथमिकता ${HOUSE_THEMES[lagnaLordHouse].domain} रहेगी।`;
+  const grahas = d1RawData.grahas || {};
+  const analysis = d1RawData.analysis || {};
 
-  // 4. करियर का डायनामिक विश्लेषण
-  const careerAnalysis = generateCareerAnalysis(d1Data, lagnaId, houseAspects);
+  // ------------------------------------------------------------
+  // SIGN LORDS
+  // ------------------------------------------------------------
+
+  const SIGN_LORDS = {
+    1: 'Mars',
+    2: 'Venus',
+    3: 'Mercury',
+    4: 'Moon',
+    5: 'Sun',
+    6: 'Mercury',
+    7: 'Venus',
+    8: 'Mars',
+    9: 'Jupiter',
+    10: 'Saturn',
+    11: 'Saturn',
+    12: 'Jupiter'
+  };
+
+  // ------------------------------------------------------------
+  // HOUSE FROM SIGN
+  // ------------------------------------------------------------
+
+  function getHouseFromSign(signId) {
+    if (signId === undefined || signId === null) return null;
+
+    return (
+      ((Number(signId) - lagnaSignId + 12) % 12) + 1
+    );
+  }
+
+  // ------------------------------------------------------------
+  // GET PLANET
+  // ------------------------------------------------------------
+
+  function getPlanet(planetName) {
+    const planet = grahas[planetName];
+
+    if (!planet) return null;
+
+    const house =
+      planet.house !== undefined
+        ? Number(planet.house)
+        : getHouseFromSign(planet.signId);
+
+    return {
+      planet: planetName,
+      signId: Number(planet.signId),
+      signName: planet.sign || planet.name || null,
+      signHindi: planet.signHindi || null,
+      degreeInSign:
+        planet.degreeInSign !== undefined
+          ? Number(planet.degreeInSign)
+          : null,
+      house,
+      isRetrograde: Boolean(planet.isRetrograde)
+    };
+  }
+
+  // ------------------------------------------------------------
+  // HOUSE SIGNS
+  // ------------------------------------------------------------
+
+  function getHouseSign(houseNumber) {
+    const signId =
+      ((lagnaSignId - 1 + (houseNumber - 1)) % 12) + 1;
+
+    return {
+      house: houseNumber,
+      signId,
+      lord: SIGN_LORDS[signId]
+    };
+  }
+
+  // ------------------------------------------------------------
+  // HOUSE OCCUPANTS
+  // ------------------------------------------------------------
+
+  function getHouseOccupants(houseNumber) {
+    if (analysis.houseOccupancy?.[String(houseNumber)]) {
+      return [
+        ...analysis.houseOccupancy[String(houseNumber)]
+      ];
+    }
+
+    return Object.entries(grahas)
+      .filter(([, planet]) => {
+        const planetHouse =
+          planet.house !== undefined
+            ? Number(planet.house)
+            : getHouseFromSign(planet.signId);
+
+        return planetHouse === houseNumber;
+      })
+      .map(([planet]) => planet);
+  }
+
+  // ------------------------------------------------------------
+  // PLANET HOUSE MAP
+  // ------------------------------------------------------------
+
+  function getPlanetHouseMap() {
+    const result = {};
+
+    for (const [planetName, planet] of Object.entries(grahas)) {
+      result[planetName] =
+        planet.house !== undefined
+          ? Number(planet.house)
+          : getHouseFromSign(planet.signId);
+    }
+
+    return result;
+  }
+
+  // ------------------------------------------------------------
+  // PARASHARI ASPECTS
+  // ------------------------------------------------------------
+
+  function getAspectingPlanets(targetHouse) {
+    const aspects = [];
+
+    const planetHouseMap = getPlanetHouseMap();
+
+    for (const [planet, fromHouse] of Object.entries(planetHouseMap)) {
+      if (!fromHouse) continue;
+
+      // सभी ग्रहों की 7th aspect
+      const seventhHouse =
+        ((fromHouse - 1 + 6) % 12) + 1;
+
+      if (seventhHouse === targetHouse) {
+        aspects.push({
+          planet,
+          aspectType: '7th'
+        });
+      }
+
+      // Mars → 4th & 8th
+      if (planet === 'Mars') {
+        const fourthHouse =
+          ((fromHouse - 1 + 3) % 12) + 1;
+
+        const eighthHouse =
+          ((fromHouse - 1 + 7) % 12) + 1;
+
+        if (fourthHouse === targetHouse) {
+          aspects.push({
+            planet,
+            aspectType: '4th'
+          });
+        }
+
+        if (eighthHouse === targetHouse) {
+          aspects.push({
+            planet,
+            aspectType: '8th'
+          });
+        }
+      }
+
+      // Jupiter → 5th & 9th
+      if (planet === 'Jupiter') {
+        const fifthAspect =
+          ((fromHouse - 1 + 4) % 12) + 1;
+
+        const ninthAspect =
+          ((fromHouse - 1 + 8) % 12) + 1;
+
+        if (fifthAspect === targetHouse) {
+          aspects.push({
+            planet,
+            aspectType: '5th'
+          });
+        }
+
+        if (ninthAspect === targetHouse) {
+          aspects.push({
+            planet,
+            aspectType: '9th'
+          });
+        }
+      }
+
+      // Saturn → 3rd & 10th
+      if (planet === 'Saturn') {
+        const thirdHouse =
+          ((fromHouse - 1 + 2) % 12) + 1;
+
+        const tenthHouse =
+          ((fromHouse - 1 + 9) % 12) + 1;
+
+        if (thirdHouse === targetHouse) {
+          aspects.push({
+            planet,
+            aspectType: '3rd'
+          });
+        }
+
+        if (tenthHouse === targetHouse) {
+          aspects.push({
+            planet,
+            aspectType: '10th'
+          });
+        }
+      }
+    }
+
+    return aspects;
+  }
+
+  // ------------------------------------------------------------
+  // IMPORTANT HOUSES
+  // ------------------------------------------------------------
+
+  const fifthHouse = getHouseSign(5);
+  const secondHouse = getHouseSign(2);
+  const seventhHouse = getHouseSign(7);
+  const ninthHouse = getHouseSign(9);
+  const eleventhHouse = getHouseSign(11);
+
+  // ------------------------------------------------------------
+  // FIFTH LORD
+  // ------------------------------------------------------------
+
+  const fifthLord = fifthHouse.lord;
+  const fifthLordData = getPlanet(fifthLord);
+
+  // ------------------------------------------------------------
+  // JUPITER
+  // ------------------------------------------------------------
+
+  const jupiter = getPlanet('Jupiter');
+
+  // ------------------------------------------------------------
+  // FINAL SMALL PROGENY OBJECT
+  // ------------------------------------------------------------
 
   return {
-    success: true,
-    statusCode: 200,
-    chartType: "D1 (Lagna / Rashi Chart)",
-    meta: {
-      dob: d1Data.meta.inputDate,
-      tob: d1Data.meta.inputTime,
-      ascendant: `${lagna.sign} (${lagna.signHindi})`,
-      ascendantDegree: lagna.degreeInSign,
-      nakshatra: `${lagna.nakshatra} (चरण ${lagna.charan})`,
-      ayanamsha: `${d1Data.meta.ayanamshaUsed} (${d1Data.meta.ayanamshaValue})`
+    available: true,
+
+    lagna: {
+      signId: lagnaSignId,
+      sign: d1RawData.lagna.sign || null,
+      signHindi: d1RawData.lagna.signHindi || null
     },
-    coreSynthesis: {
-      bodyAndConstitution: bodySummary,
-      personalityAndTemperament: personalitySummary,
-      overallLifeDirection: HOUSE_THEMES[lagnaLordHouse].impact
+
+    fifthHouse: {
+      house: 5,
+      signId: fifthHouse.signId,
+      lord: fifthLord,
+      occupants: getHouseOccupants(5),
+      aspects: getAspectingPlanets(5)
     },
-    careerAnalysis: careerAnalysis,
-    houseWiseDetailedAnalysis: houseAnalysis,
-    activeYogasAndDoshas: (d1Data.analysis.yogasAndDoshas || []).map(y => ({
-      name: y.name,
-      type: y.type,
-      impact: y.description
-    }))
+
+    fifthLord: fifthLordData,
+
+    jupiter: jupiter,
+
+    supportingHouses: {
+      second: {
+        ...secondHouse,
+        occupants: getHouseOccupants(2),
+        aspects: getAspectingPlanets(2)
+      },
+
+      seventh: {
+        ...seventhHouse,
+        occupants: getHouseOccupants(7),
+        aspects: getAspectingPlanets(7)
+      },
+
+      ninth: {
+        ...ninthHouse,
+        occupants: getHouseOccupants(9),
+        aspects: getAspectingPlanets(9)
+      },
+
+      eleventh: {
+        ...eleventhHouse,
+        occupants: getHouseOccupants(11),
+        aspects: getAspectingPlanets(11)
+      }
+    },
+
+    source: {
+      calculation: 'Existing D1 calculated data',
+      houseSystem: 'Whole Sign',
+      aspectSystem: 'Parashari'
+    }
   };
 }
-
-module.exports = {
-  analyzeD1Chart
-};
