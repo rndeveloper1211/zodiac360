@@ -14,6 +14,9 @@ const d12Routes = require('./src/engine/D12/D12.routes');
 const d16Routes = require('./src/engine/D16/D16.routes');
 const d20Routes = require('./src/engine/D20/D20.routes');
 const d24Routes = require('./src/engine/D24/D24.routes');
+const d30Routes = require('./src/engine/D30/D30.routes');
+const d40Routes = require('./src/engine/D40/D40.routes');
+const d45Routes = require('./src/engine/D45/D45.routes')
 const app = express();
 
 
@@ -116,6 +119,9 @@ app.use(
   '/api/chart/d24',
   d24Routes
 );
+app.use('/api/chart/d30',d30Routes)
+app.use('/api/chart/d40',d40Routes)
+app.use('/api/chart/d45',d45Routes)
 // ============================================================
 // HEALTH CHECK
 // ============================================================
